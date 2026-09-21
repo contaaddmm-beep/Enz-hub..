@@ -1,4 +1,4 @@
--- // ENZ HUB - Meme Sea Pro Script (Auto Attack Persistente e Corrigido)
+-- // ENZ HUB - Meme Sea Pro Script (Auto Attack Fixo e Estável)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
@@ -260,7 +260,7 @@ end
 ToggleButton.MouseButton1Click:Connect(ToggleUI)
 BtnClose.MouseButton1Click:Connect(ToggleUI)
 
--- // Lógica dos Botões
+-- // Lógica dos Botões com proteção para não bugar
 BtnAutoFarm.MouseButton1Click:Connect(function()
     getgenv().AutoFarmLevel = not getgenv().AutoFarmLevel
     BtnAutoFarm.Text = getgenv().AutoFarmLevel and "Auto Farm (Level): ON" or "Auto Farm (Level): OFF"
@@ -281,7 +281,7 @@ BtnAutoAttack.MouseButton1Click:Connect(function()
     BtnAutoAttack.BackgroundColor3 = getgenv().AutoAttack and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(35, 35, 35)
 end)
 
--- // Anti-Morte Ajustado (Reseta apenas o Farm e o Teleguiado, mantendo o Auto Attack intacto para você poder religar fácil)
+-- // Anti-Morte limpo
 local function ResetFunctions()
     getgenv().AutoFarmLevel = false
     getgenv().FlyTeleguiado = false
@@ -301,13 +301,21 @@ if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") th
     LocalPlayer.Character.Humanoid.Died:Connect(ResetFunctions)
 end
 
--- // Loop Principal (Auto Attack separado e independente da morte)
+-- // Loop Principal do Jogo (Auto Attack Robusto + Fly Teleguiado)
 RunService.Stepped:Connect(function()
-    -- Auto Attack roda sempre que ligado, mesmo se o personagem estiver revivendo ou sem alvo
+    -- Sistema de Auto Attack seguro (ataca direto a ferramenta ou usa clique simulado sem travamentos)
     if getgenv().AutoAttack then
         pcall(function()
-            VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            local char = LocalPlayer.Character
+            if char then
+                local tool = char:FindFirstChildOfClass("Tool")
+                if tool then
+                    tool:Activate()
+                else
+                    VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                    VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                end
+            end
         end)
     end
 
