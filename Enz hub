@@ -1,0 +1,339 @@
+-- // ENZ HUB - Meme Sea Pro Script (Auto Attack Persistente e Corrigido)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- // Configurações de Estado
+getgenv().AutoFarmLevel = false
+getgenv().FlyTeleguiado = false
+getgenv().AutoAttack = false
+
+-- // Função para Encontrar Inimigos em Qualquer Ilha / Nível Atual
+local function GetTargetByLevel()
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+    
+    local closestEnemy = nil
+    local shortestDistance = math.huge
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+            if obj ~= character and obj.Humanoid.Health > 0 then
+                local distance = (character.HumanoidRootPart.Position - obj.HumanoidRootPart.Position).Magnitude
+                if distance < shortestDistance and distance < 5000 then
+                    shortestDistance = distance
+                    closestEnemy = obj
+                end
+            end
+        end
+    end
+    
+    return closestEnemy
+end
+
+-- // Criando a UI Principal
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "EnzHubMemeSea"
+if syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
+elseif gethui then
+    ScreenGui.Parent = gethui()
+else
+    ScreenGui.Parent = CoreGui
+end
+ScreenGui.ResetOnSpawn = false
+
+-- // --- JANELA DE AVISO INICIAL (POP-UP COM OK) ---
+local AlertFrame = Instance.new("Frame", ScreenGui)
+AlertFrame.Name = "AlertFrame"
+AlertFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+AlertFrame.Position = UDim2.new(0.5, -140, 0.5, -70)
+AlertFrame.Size = UDim2.new(0, 280, 0, 140)
+AlertFrame.Active = true
+AlertFrame.Draggable = true
+
+local AlertStroke = Instance.new("UIStroke", AlertFrame)
+AlertStroke.Thickness = 3
+task.spawn(function()
+    while AlertFrame.Parent do
+        for i = 0, 1, 0.005 do
+            AlertStroke.Color = Color3.fromHSV(i, 1, 1)
+            task.wait(0.02)
+        end
+    end
+end)
+Instance.new("UICorner", AlertFrame).CornerRadius = UDim.new(0, 10)
+
+local AlertTitle = Instance.new("TextLabel", AlertFrame)
+AlertTitle.BackgroundTransparency = 1
+AlertTitle.Position = UDim2.new(0, 0, 0, 10)
+AlertTitle.Size = UDim2.new(1, 0, 0, 30)
+AlertTitle.Font = Enum.Font.GothamBold
+AlertTitle.Text = "ENZ HUB"
+AlertTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AlertTitle.TextSize = 16
+
+local AlertText = Instance.new("TextLabel", AlertFrame)
+AlertText.BackgroundTransparency = 1
+AlertText.Position = UDim2.new(0, 10, 0, 45)
+AlertText.Size = UDim2.new(1, -20, 0, 35)
+AlertText.Font = Enum.Font.Gotham
+AlertText.Text = "Ative Auto Farm e Teleguiado para funcionar!"
+AlertText.TextColor3 = Color3.fromRGB(255, 100, 100)
+AlertText.TextSize = 12
+AlertText.TextWrapped = true
+
+local BtnOk = Instance.new("TextButton", AlertFrame)
+BtnOk.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+BtnOk.Position = UDim2.new(0.2, 0, 0, 90)
+BtnOk.Size = UDim2.new(0.6, 0, 0, 35)
+BtnOk.Font = Enum.Font.GothamBold
+BtnOk.Text = "OK"
+BtnOk.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnOk.TextSize = 14
+Instance.new("UICorner", BtnOk).CornerRadius = UDim.new(0, 6)
+-- // ---------------------------------------------
+
+-- // Bolinha Flutuante Arrastável
+local ToggleButton = Instance.new("TextButton", ScreenGui)
+ToggleButton.Name = "ToggleButton"
+ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleButton.Position = UDim2.new(0.05, 0, 0.5, -25)
+ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.Text = "ENZ"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 14
+ToggleButton.Visible = false
+
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(1, 0)
+local ToggleStroke = Instance.new("UIStroke", ToggleButton)
+ToggleStroke.Thickness = 2
+
+task.spawn(function()
+    while true do
+        for i = 0, 1, 0.005 do
+            ToggleStroke.Color = Color3.fromHSV(i, 1, 1)
+            task.wait(0.02)
+        end
+    end
+end)
+
+-- // Painel Principal
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Name = "MainFrame"
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -145)
+MainFrame.Size = UDim2.new(0, 300, 0, 310)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = false
+
+local MainStroke = Instance.new("UIStroke", MainFrame)
+MainStroke.Thickness = 3
+
+task.spawn(function()
+    while true do
+        for i = 0, 1, 0.005 do
+            MainStroke.Color = Color3.fromHSV(i, 1, 1)
+            task.wait(0.02)
+        end
+    end
+end)
+
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+-- // Título do Painel
+local Title = Instance.new("TextLabel", MainFrame)
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 0, 0, 8)
+Title.Size = UDim2.new(1, 0, 0, 25)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "ENZ HUB"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+
+-- // Status Dinâmico no Painel
+local WarningLabel = Instance.new("TextLabel", MainFrame)
+WarningLabel.BackgroundTransparency = 1
+WarningLabel.Position = UDim2.new(0, 10, 0, 32)
+WarningLabel.Size = UDim2.new(1, -20, 0, 30)
+WarningLabel.Font = Enum.Font.Gotham
+WarningLabel.Text = "Ative Auto Farm e Teleguiado para funcionar!"
+WarningLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+WarningLabel.TextSize = 11
+WarningLabel.TextWrapped = true
+
+-- // Botão Auto Farm
+local BtnAutoFarm = Instance.new("TextButton", MainFrame)
+BtnAutoFarm.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+BtnAutoFarm.Position = UDim2.new(0.1, 0, 0, 68)
+BtnAutoFarm.Size = UDim2.new(0.8, 0, 0, 38)
+BtnAutoFarm.Font = Enum.Font.GothamSemibold
+BtnAutoFarm.Text = "Auto Farm (Level): OFF"
+BtnAutoFarm.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnAutoFarm.TextSize = 12
+Instance.new("UICorner", BtnAutoFarm).CornerRadius = UDim.new(0, 6)
+
+-- // Botão Fly Teleguiado
+local BtnFlyTeleguiado = Instance.new("TextButton", MainFrame)
+BtnFlyTeleguiado.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+BtnFlyTeleguiado.Position = UDim2.new(0.1, 0, 0, 112)
+BtnFlyTeleguiado.Size = UDim2.new(0.8, 0, 0, 38)
+BtnFlyTeleguiado.Font = Enum.Font.GothamSemibold
+BtnFlyTeleguiado.Text = "Fly Teleguiado (Mobs): OFF"
+BtnFlyTeleguiado.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnFlyTeleguiado.TextSize = 12
+Instance.new("UICorner", BtnFlyTeleguiado).CornerRadius = UDim.new(0, 6)
+
+-- // Botão Auto Attack
+local BtnAutoAttack = Instance.new("TextButton", MainFrame)
+BtnAutoAttack.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+BtnAutoAttack.Position = UDim2.new(0.1, 0, 0, 156)
+BtnAutoAttack.Size = UDim2.new(0.8, 0, 0, 38)
+BtnAutoAttack.Font = Enum.Font.GothamSemibold
+BtnAutoAttack.Text = "Auto Attack: OFF"
+BtnAutoAttack.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnAutoAttack.TextSize = 12
+Instance.new("UICorner", BtnAutoAttack).CornerRadius = UDim.new(0, 6)
+
+local function UpdateWarningState()
+    if getgenv().AutoFarmLevel and getgenv().FlyTeleguiado then
+        WarningLabel.Text = "Status: Farm Ativo! (Se a missão acabar, desative para pegar outra)"
+        WarningLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        WarningLabel.Text = "Ative Auto Farm e Teleguiado para funcionar!"
+        WarningLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end
+
+-- // Botão Fechar Painel
+local BtnClose = Instance.new("TextButton", MainFrame)
+BtnClose.BackgroundColor3 = Color3.fromRGB(120, 20, 20)
+BtnClose.Position = UDim2.new(0.1, 0, 0, 235)
+BtnClose.Size = UDim2.new(0.8, 0, 0, 35)
+BtnClose.Font = Enum.Font.GothamBold
+BtnClose.Text = "FECHAR PAINEL"
+BtnClose.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnClose.TextSize = 13
+Instance.new("UICorner", BtnClose).CornerRadius = UDim.new(0, 6)
+
+-- // Ação ao clicar em OK no Alerta Inicial
+BtnOk.MouseButton1Click:Connect(function()
+    AlertFrame:Destroy()
+    ToggleButton.Visible = true
+    MainFrame.Visible = true
+end)
+
+-- // Arrastar Bolinha
+local dragging, dragStart, startPos
+ToggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = ToggleButton.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        ToggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+local function ToggleUI()
+    MainFrame.Visible = not MainFrame.Visible
+end
+
+ToggleButton.MouseButton1Click:Connect(ToggleUI)
+BtnClose.MouseButton1Click:Connect(ToggleUI)
+
+-- // Lógica dos Botões
+BtnAutoFarm.MouseButton1Click:Connect(function()
+    getgenv().AutoFarmLevel = not getgenv().AutoFarmLevel
+    BtnAutoFarm.Text = getgenv().AutoFarmLevel and "Auto Farm (Level): ON" or "Auto Farm (Level): OFF"
+    BtnAutoFarm.BackgroundColor3 = getgenv().AutoFarmLevel and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(35, 35, 35)
+    UpdateWarningState()
+end)
+
+BtnFlyTeleguiado.MouseButton1Click:Connect(function()
+    getgenv().FlyTeleguiado = not getgenv().FlyTeleguiado
+    BtnFlyTeleguiado.Text = getgenv().FlyTeleguiado and "Fly Teleguiado (Mobs): ON" or "Fly Teleguiado (Mobs): OFF"
+    BtnFlyTeleguiado.BackgroundColor3 = getgenv().FlyTeleguiado and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(35, 35, 35)
+    UpdateWarningState()
+end)
+
+BtnAutoAttack.MouseButton1Click:Connect(function()
+    getgenv().AutoAttack = not getgenv().AutoAttack
+    BtnAutoAttack.Text = getgenv().AutoAttack and "Auto Attack: ON" or "Auto Attack: OFF"
+    BtnAutoAttack.BackgroundColor3 = getgenv().AutoAttack and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(35, 35, 35)
+end)
+
+-- // Anti-Morte Ajustado (Reseta apenas o Farm e o Teleguiado, mantendo o Auto Attack intacto para você poder religar fácil)
+local function ResetFunctions()
+    getgenv().AutoFarmLevel = false
+    getgenv().FlyTeleguiado = false
+    BtnAutoFarm.Text = "Auto Farm (Level): OFF"
+    BtnAutoFarm.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    BtnFlyTeleguiado.Text = "Fly Teleguiado (Mobs): OFF"
+    BtnFlyTeleguiado.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    UpdateWarningState()
+end
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    ResetFunctions()
+    newChar:WaitForChild("Humanoid").Died:Connect(ResetFunctions)
+end)
+
+if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+    LocalPlayer.Character.Humanoid.Died:Connect(ResetFunctions)
+end
+
+-- // Loop Principal (Auto Attack separado e independente da morte)
+RunService.Stepped:Connect(function()
+    -- Auto Attack roda sempre que ligado, mesmo se o personagem estiver revivendo ou sem alvo
+    if getgenv().AutoAttack then
+        pcall(function()
+            VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        end)
+    end
+
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
+    
+    local hrp = char.HumanoidRootPart
+    local humanoid = char.Humanoid
+    
+    if getgenv().AutoFarmLevel and getgenv().FlyTeleguiado then
+        local target = GetTargetByLevel()
+        if target and target:FindFirstChild("HumanoidRootPart") then
+            local targetHRP = target.HumanoidRootPart
+            
+            humanoid.PlatformStand = true
+            local targetCFrame = targetHRP.CFrame * CFrame.new(0, 3, 2)
+            hrp.CFrame = hrp.CFrame:Lerp(targetCFrame, 0.4)
+            hrp.Velocity = Vector3.new(0, 0, 0)
+        else
+            humanoid.PlatformStand = false
+            if WarningLabel then
+                WarningLabel.Text = "⚠️ Missão concluída! Desative o Auto Farm e o Teleguiado para pegar outra missão."
+                WarningLabel.TextColor3 = Color3.fromRGB(255, 220, 50)
+            end
+        end
+    else
+        humanoid.PlatformStand = false
+    end
+end)
